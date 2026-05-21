@@ -866,7 +866,7 @@ _CONFIGS = [
             action_expert_variant="gemma_300m_lora",
         ),
         data=LeRobotXarmMugDataConfig(
-            repo_id="ankushd/xarm_mug_to_coffee_10hz",
+            repo_id="ankushd/xarm_mug_to_coffee_vla_10hz",
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
