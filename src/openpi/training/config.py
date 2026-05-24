@@ -883,6 +883,96 @@ _CONFIGS = [
         save_interval=5000,
         keep_period=5000,
     ),
+    # Same recipe as pi05_xarm_mug_lora_10hz but on the single-cup/single-
+    # machine baseline dataset. Identical schema (xarm 8-d state, 7-d actions,
+    # 224x224 image, 10 Hz), so the XarmMug data transforms apply unchanged.
+    TrainConfig(
+        name="pi05_single_cup_lora_10hz",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotXarmMugDataConfig(
+            repo_id="ankushd/single_cup_single_machine_baseline_10hz",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        save_interval=5000,
+        keep_period=5000,
+    ),
+    # 4x4 mug/machine-pose grid xarm dataset (160 episodes). Same 10 Hz xarm
+    # schema, reuses XarmMug transforms unchanged.
+    TrainConfig(
+        name="pi05_xarm_4by4_lora_10hz",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotXarmMugDataConfig(
+            repo_id="ankushd/xarm_4by4_mug_machine_10hz",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        save_interval=5000,
+        keep_period=5000,
+    ),
+    # R2R2R-generated xarm7 mug-to-coffee-machine dataset (131 successful
+    # episodes from iter30_run01_valid). Same schema as the other 10 Hz xarm
+    # configs (8-d state, 7-d actions, 224x224 image), so reuses XarmMug
+    # transforms unchanged.
+    TrainConfig(
+        name="pi05_r2r2r_lora_10hz",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotXarmMugDataConfig(
+            repo_id="ankushd/r2r2r_xarm7_mug_to_cm",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        save_interval=5000,
+        keep_period=5000,
+    ),
     #
     # Fine-tuning Aloha configs.
     #
