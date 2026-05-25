@@ -91,6 +91,13 @@ class DataConfig:
     # If true, will use the LeRobot dataset task to define the prompt.
     prompt_from_task: bool = False
 
+    # If set, only the listed episode indices are used. Useful for dataset-size
+    # ablations on LeRobot datasets. None means all episodes.
+    episodes: Sequence[int] | None = None
+    # If set (and `episodes` is None), the data loader keeps this many episodes,
+    # evenly spaced over the dataset's full episode range via np.linspace.
+    num_episodes: int | None = None
+
     # Only used for RLDS data loader (ie currently only used for DROID).
     rlds_data_dir: str | None = None
     # Action space for DROID dataset.
@@ -543,6 +550,9 @@ class TrainConfig:
     # Number of workers to use for the data loader. Increasing this number will speed up data loading but
     # will increase memory and CPU usage.
     num_workers: int = 2
+    # If set, the data loader keeps this many episodes (evenly spaced across the dataset). Defaults to
+    # using all episodes. Overridden by `data.base_config.episodes` when that is explicitly set.
+    num_episodes: int | None = None
     # Number of train steps (batches) to run.
     num_train_steps: int = 30_000
 
@@ -897,6 +907,106 @@ _CONFIGS = [
         ),
         data=LeRobotXarmMugDataConfig(
             repo_id="ankushd/single_cup_single_machine_baseline_10hz",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        save_interval=5000,
+        keep_period=5000,
+    ),
+    # 160-episode single-cup/single-machine xarm dataset, pre-processed into
+    # openpi's flat-key layout (image 224x224, state 8-d, actions 7-d). Same
+    # schema as the existing xarm-mug configs, so reuses LeRobotXarmMugDataConfig.
+    TrainConfig(
+        name="pi05_single_cup_160ep_lora_10hz",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotXarmMugDataConfig(
+            repo_id="ankushd/xarm_single_cup_single_machine_160_10hz",
+            base_config=DataConfig(prompt_from_task=True),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        save_interval=5000,
+        keep_period=5000,
+    ),
+    # Dataset-size ablation: same xarm 160-ep dataset, but only 100 episodes
+    # selected via np.linspace(0, 159, 100).round() so the subset stays evenly
+    # spaced across the collection order (demos of the same type were collected
+    # consecutively, so even spacing preserves type coverage).
+    TrainConfig(
+        name="pi05_single_cup_100ep_lora_10hz",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotXarmMugDataConfig(
+            repo_id="ankushd/xarm_single_cup_single_machine_160_10hz",
+            base_config=DataConfig(
+                prompt_from_task=True,
+                episodes=(
+                    0, 2, 3, 5, 6, 8, 10, 11, 13, 14, 16, 18, 19, 21, 22, 24, 26, 27, 29, 31,
+                    32, 34, 35, 37, 39, 40, 42, 43, 45, 47, 48, 50, 51, 53, 55, 56, 58, 59, 61, 63,
+                    64, 66, 67, 69, 71, 72, 74, 75, 77, 79, 80, 82, 84, 85, 87, 88, 90, 92, 93, 95,
+                    96, 98, 100, 101, 103, 104, 106, 108, 109, 111, 112, 114, 116, 117, 119, 120, 122, 124, 125, 127,
+                    128, 130, 132, 133, 135, 137, 138, 140, 141, 143, 145, 146, 148, 149, 151, 153, 154, 156, 157, 159,
+                ),
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        batch_size=32,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        save_interval=5000,
+        keep_period=5000,
+    ),
+    # 4x4 mug/machine-pose grid panda dataset (160 episodes, ~51.7k frames at
+    # 10 Hz). Pre-processed into openpi's flat-key layout, identical to the
+    # xarm-mug configs aside from the underlying robot.
+    TrainConfig(
+        name="pi05_panda_4by4_lora_10hz",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=10,
+            discrete_state_input=False,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotXarmMugDataConfig(
+            repo_id="ankushd/panda_4by4_mug_machine_10hz",
             base_config=DataConfig(prompt_from_task=True),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),

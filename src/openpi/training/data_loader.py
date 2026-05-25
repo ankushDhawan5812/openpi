@@ -1,4 +1,5 @@
 from collections.abc import Iterator, Sequence
+import dataclasses
 import logging
 import multiprocessing
 import os
@@ -138,12 +139,33 @@ def create_torch_dataset(
         return FakeDataset(model_config, num_samples=1024)
 
     dataset_meta = lerobot_dataset.LeRobotDatasetMetadata(repo_id)
+
+    if data_config.episodes is not None:
+        episodes = list(data_config.episodes)
+    elif data_config.num_episodes is not None:
+        total = dataset_meta.total_episodes
+        n = min(data_config.num_episodes, total)
+        episodes = np.round(np.linspace(0, total - 1, n)).astype(int).tolist()
+    else:
+        episodes = None
+
+    # We do *not* pass `episodes=` to LeRobotDataset: in the installed version it
+    # has a bug where _get_query_indices indexes episode_data_index with the
+    # original episode_index from the parquet, but the filtered index has only
+    # len(episodes) entries -> IndexError. Instead, load the full dataset and
+    # subset at the frame level via the (unfiltered) episode_data_index.
     dataset = lerobot_dataset.LeRobotDataset(
         data_config.repo_id,
         delta_timestamps={
             key: [t / dataset_meta.fps for t in range(action_horizon)] for key in data_config.action_sequence_keys
         },
     )
+    if episodes is not None:
+        edi = dataset.episode_data_index
+        frame_indices: list[int] = []
+        for ep in episodes:
+            frame_indices.extend(range(int(edi["from"][ep]), int(edi["to"][ep])))
+        dataset = torch.utils.data.Subset(dataset, frame_indices)
 
     if data_config.prompt_from_task:
         dataset = TransformedDataset(dataset, [_transforms.PromptFromLeRobotTask(dataset_meta.tasks)])
@@ -240,6 +262,8 @@ def create_data_loader(
         framework: The framework to use ("jax" or "pytorch").
     """
     data_config = config.data.create(config.assets_dirs, config.model)
+    if config.num_episodes is not None and data_config.episodes is None and data_config.num_episodes is None:
+        data_config = dataclasses.replace(data_config, num_episodes=config.num_episodes)
     logging.info(f"data_config: {data_config}")
 
     if data_config.rlds_data_dir is not None:
